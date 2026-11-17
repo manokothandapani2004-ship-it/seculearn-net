@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SecuLearn-Net | Institution & Faculty Pre-Exam Portal</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #0f172a;
+            color: #f8fafc;
+            margin: 0;
+            padding: 30px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: auto;
+            background: #1e293b;
+            padding: 32px;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+            border: 1px solid #334155;
+        }
+
+        h1 {
+            color: #38bdf8;
+            text-align: center;
+            margin-bottom: 5px;
+            font-size: 26px;
+        }
+
+        p.subtitle {
+            text-align: center;
+            color: #94a3b8;
+            margin-bottom: 25px;
+            font-size: 14px;
+        }
+
+        .card {
+            background: #0f172a;
+            padding: 22px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border: 1px solid #334155;
+        }
+
+        label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #e2e8f0;
+            font-size: 14px;
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        input[type="file"],
+        input[type="text"] {
+            width: 100%;
+            padding: 11px;
+            margin-bottom: 18px;
+            border-radius: 6px;
+            border: 1px solid #475569;
+            background: #1e293b;
+            color: #fff;
+            box-sizing: border-box;
+            font-size: 14px;
+        }
+
+        button.btn-primary {
+            background: #0284c7;
+            color: white;
+            padding: 13px 25px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: bold;
+            width: 100%;
+            transition: background 0.2s;
+        }
+
+        button.btn-primary:hover {
+            background: #0369a1;
+        }
+
+        .status-box {
+            padding: 20px;
+            border-radius: 8px;
+            display: none;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 5px 12px;
+            border-radius: 14px;
+            font-size: 13px;
+            font-weight: bold;
+            letter-spacing: 0.5px;
+        }
+
+        .badge-locked {
+            background: #ea580c;
+            color: white;
+        }
+
+        .badge-unlocked {
+            background: #16a34a;
+            color: white;
+        }
+
+        .badge-intact {
+            background: #16a34a;
+            color: white;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .badge-breach {
+            background: #dc2626;
+            color: white;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: bold;
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.4;
+            }
+
+            100% {
+                opacity: 1;
+            }
+        }
+
+        .code-display-wrap {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 15px;
+            flex-wrap: wrap;
+        }
+
+        .code-display {
+            font-size: 34px;
+            font-family: 'Consolas', monospace;
+            letter-spacing: 8px;
+            color: #4ade80;
+            text-align: center;
+            background: #0b0f19;
+            padding: 14px 28px;
+            border-radius: 8px;
+            border: 2px dashed #4ade80;
+        }
+
+        .btn-copy {
+            background: #334155;
+            color: #f8fafc;
+            border: 1px solid #475569;
+            padding: 12px 18px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13.5px;
+            font-weight: 600;
+            width: auto;
+            transition: all 0.2s;
+        }
+
+        .btn-copy:hover {
+            background: #475569;
+            color: #38bdf8;
+        }
+
+        /* --- Federated Anomaly Drift HUD --- */
+        .fl-hud-card {
+            background: #0b1120;
+            border: 1px solid #1e293b;
+            border-radius: 8px;
+            padding: 18px 20px;
+            margin-top: 20px;
+            display: none;
+        }
+
+        .fl-hud-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 15px;
+            border-bottom: 1px solid #1e293b;
+            padding-bottom: 10px;
+        }
+
+        .fl-hud-header h3 {
+            margin: 0;
+            color: #a78bfa;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .fl-pill {
+            background: #4c1d95;
+            color: #ddd6fe;
+            padding: 3px 9px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+        }
+
+        .fl-metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            margin-bottom: 15px;
+        }
+
+        .fl-stat-box {
+            background: #1e293b;
+            padding: 12px;
+            border-radius: 6px;
+            border: 1px solid #334155;
+            text-align: center;
+        }
+
+        .fl-stat-box .title {
+            color: #94a3b8;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+        }
+
+        .fl-stat-box .value {
+            font-size: 20px;
+            font-weight: 800;
+            font-family: 'Consolas', monospace;
+            color: #38bdf8;
+        }
+
+        .fl-chart-container {
+            background: #0f172a;
+            border: 1px solid #1e293b;
+            border-radius: 6px;
+            padding: 12px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 15px;
+        }
+
+        .fl-chart-label {
+            font-size: 11.5px;
+            color: #94a3b8;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .fl-chart-svg {
+            flex: 1;
+            height: 40px;
+        }
+
+        /* --- Active Session Monitor Panel --- */
+        .monitor-panel {
+            margin-top: 25px;
+            background: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            padding: 20px;
+            display: none;
+        }
+
+        .monitor-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #334155;
+            padding-bottom: 12px;
+            margin-bottom: 15px;
+        }
+
+        .monitor-header h3 {
+            margin: 0;
+            color: #38bdf8;
+            font-size: 17px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        table.ledger-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13.5px;
+            margin-top: 5px;
+        }
+
+        table.ledger-table th,
+        table.ledger-table td {
+            padding: 12px 14px;
+            text-align: left;
+            border-bottom: 1px solid #1e293b;
+        }
+
+        table.ledger-table th {
+            background: #1e293b;
+            color: #94a3b8;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 11.5px;
+            letter-spacing: 0.5px;
+        }
+
+        table.ledger-table tbody tr:hover {
+            background: #131d31;
+        }
+
+        .tag-auto {
+            background: #7c2d12;
+            color: #fdba74;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 10.5px;
+            font-weight: bold;
+            margin-left: 6px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>SECULEARN-NET PRE-EXAM PORTAL</h1>
+
+        <!-- Upload Card -->
+        <div class="card">
+            <form id="uploadForm">
+                <label> Upload Question Paper (PDF, TXT):</label>
+                <input type="file" id="paperFile" name="paper_file" required>
+
+                <div class="grid-2">
+                    <div>
+                        <label> Time-Lock (HH:MM:SS):</label>
+                        <input type="text" id="lockDuration" name="lock_duration" value="00:00:10"
+                            placeholder="e.g. 00:00:10" required>
+                    </div>
+                    <div>
+                        <label> Exam Duration (HH:MM:SS):</label>
+                        <input type="text" id="examDuration" name="exam_duration" value="00:15:00"
+                            placeholder="e.g. 01:00:00" required>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn-primary" id="submitBtn">Encrypt the uploaded Document & Distribute Key
+                    Shares</button>
+            </form>
+        </div>
+
+        <!-- Deployment Status Card -->
+        <div class="card status-box" id="statusCard">
+            <p style="margin: 8px 0;">Current Phase Status: <span id="statusBadge" class="badge"></span></p>
+            <p id="countdownText" style="font-size: 15px; font-weight: bold; color: #fbbf24; margin: 10px 0;"></p>
+
+            <!-- Access Code Section with Quick Copy -->
+            <div id="unlockedSection" style="display: none; margin-top: 20px;">
+                <p style="color: #cbd5e1; font-size: 14px; text-align: center; margin-bottom: 5px;">
+                    Examination Access Code:
+                </p>
+                <div class="code-display-wrap">
+                    <div class="code-display" id="accessCodeText">------</div>
+                    <button class="btn-copy" onclick="copyAccessCode()" id="copyCodeBtn">📋 Copy Access Code</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Federated Anomaly Drift HUD -->
+        <div class="fl-hud-card" id="flHudCard">
+            <div class="fl-hud-header">
+                <h3>
+                    <span>Federated Edge Learning & Anomaly Drift Monitor</span>
+                    <span class="fl-pill">Active</span>
+                </h3>
+            </div>
+
+            <div class="fl-metrics-grid">
+                <div class="fl-stat-box">
+                    <div class="title">Active Edge Nodes</div>
+                    <div class="value" id="flActiveNodes" style="color: #38bdf8;">0</div>
+                </div>
+                <div class="fl-stat-box">
+                    <div class="title">Global Model Loss</div>
+                    <div class="value" id="flGlobalLoss" style="color: #4ade80;">0.428</div>
+                </div>
+                <div class="fl-stat-box">
+                    <div class="title">Cohort Compliance</div>
+                    <div class="value" id="flCompliance" style="color: #22d3ee;">100%</div>
+                </div>
+                <div class="fl-stat-box">
+                    <div class="title">FedAvg Aggregation Round</div>
+                    <div class="value" id="flRounds" style="color: #facc15;">R-1</div>
+                </div>
+            </div>
+
+            <div class="fl-chart-container">
+                <div class="fl-chart-label">
+                    <strong style="color: #cbd5e1;">Global Loss Convergence Trend:</strong>
+                    <span>Real-time FedAvg learning curve</span>
+                </div>
+                <svg class="fl-chart-svg" id="flSparklineSvg" viewBox="0 0 300 40">
+                    <polyline id="sparklinePolyline" fill="none" stroke="#4ade80" stroke-width="2.5"
+                        points="0,30 300,30" />
+                </svg>
+            </div>
+        </div>
+
+        <!-- Active Session Monitor Panel -->
+        <div class="monitor-panel" id="monitorPanel">
+            <div class="monitor-header">
+                <div>
+                    <h3>
+                        <span>Consortium Ledger Monitor</span>
+                        <span id="integrityBadge" class="badge-intact">CHAIN INTACT - VERIFIED</span>
+                    </h3>
+                    <p style="color: #94a3b8; font-size: 12.5px; margin: 4px 0 0 0;">
+                        Session Code: <strong style="color: #4ade80;" id="monitoredCode">------</strong> |
+                        Committed Answer Scripts: <strong style="color: #f8fafc;" id="candidateCount">0</strong>
+                    </p>
+                </div>
+            </div>
+
+            <div style="overflow-x: auto;">
+                <table class="ledger-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 15%;">BLOCK</th>
+                            <th style="width: 45%;">STUDENT REGISTRATION ID</th>
+                            <th style="width: 40%;">SUBMISSION TIMESTAMP (IST)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="submissionsTableBody">
+                        <tr>
+                            <td colspan="3" style="text-align: center; color: #64748b; padding: 25px;">
+                                Waiting for candidate submissions... Answer scripts committed to this session's ledger
+                                will appear here.
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const form = document.getElementById("uploadForm");
+        const statusCard = document.getElementById("statusCard");
+        const statusBadge = document.getElementById("statusBadge");
+        const countdownText = document.getElementById("countdownText");
+        const unlockedSection = document.getElementById("unlockedSection");
+        const accessCodeText = document.getElementById("accessCodeText");
+        const submitBtn = document.getElementById("submitBtn");
+        const monitorPanel = document.getElementById("monitorPanel");
+        const flHudCard = document.getElementById("flHudCard");
+
+        let pollInterval = null;
+        let ledgerMonitorInterval = null;
+        let flHudInterval = null;
+        let activeAccessCode = null;
+
+        form.onsubmit = async (e) => {
+            e.preventDefault();
+            const formData = new FormData(form);
+            submitBtn.disabled = true;
+            submitBtn.innerText = "Encrypting & Partitioning Key Shares...";
+
+            try {
+                const res = await fetch("/api/upload_and_lock", { method: "POST", body: formData });
+                const data = await res.json();
+                if (res.ok) {
+                    statusCard.style.display = "block";
+                    startPolling();
+                } else {
+                    alert(data.error || "Upload failed");
+                    submitBtn.disabled = false;
+                    submitBtn.innerText = "Encrypt the uploaded Document & Distribute Key Shares";
+                }
+            } catch (err) {
+                alert("Network error: " + err);
+                submitBtn.disabled = false;
+                submitBtn.innerText = "Encrypt the uploaded Document & Distribute Key Shares";
+            }
+        };
+
+        function startPolling() {
+            if (pollInterval) clearInterval(pollInterval);
+
+            pollInterval = setInterval(async () => {
+                try {
+                    const res = await fetch("/api/status");
+                    const data = await res.json();
+
+                    if (data.status === "LOCKED") {
+                        statusBadge.className = "badge badge-locked";
+                        statusBadge.innerText = "TIME-LOCK ACTIVE";
+                        countdownText.innerText = `Time remaining: ${data.remaining_seconds} seconds`;
+                        unlockedSection.style.display = "none";
+                    } else if (data.status === "READY" || data.status === "UNLOCKED") {
+                        clearInterval(pollInterval);
+                        pollInterval = null;
+
+                        statusBadge.className = "badge badge-unlocked";
+                        statusBadge.innerText = "KEY RECONSTRUCTED";
+                        countdownText.innerText = `Allocated Exam Duration: ${data.exam_duration_str}.`;
+                        unlockedSection.style.display = "block";
+                        accessCodeText.innerText = data.access_code;
+                        activeAccessCode = data.access_code;
+
+                        submitBtn.disabled = false;
+                        submitBtn.innerText = "Encrypt the uploaded Document & Distribute Key Shares";
+
+                        initLedgerMonitor(data.access_code);
+                        initFlHudMonitor();
+                    }
+                } catch (err) {
+                    console.error("Polling error:", err);
+                }
+            }, 1000);
+        }
+
+        function copyAccessCode() {
+            if (!activeAccessCode) return;
+            navigator.clipboard.writeText(activeAccessCode).then(() => {
+                const btn = document.getElementById("copyCodeBtn");
+                btn.innerText = "✓ Copied Access Code!";
+                setTimeout(() => { btn.innerText = "📋 Copy Access Code"; }, 2000);
+            });
+        }
+
+        function initLedgerMonitor(accessCode) {
+            monitorPanel.style.display = "block";
+            document.getElementById("monitoredCode").innerText = accessCode;
+            fetchLedgerSubmissions();
+
+            if (ledgerMonitorInterval) clearInterval(ledgerMonitorInterval);
+            ledgerMonitorInterval = setInterval(fetchLedgerSubmissions, 3000);
+        }
+
+        // ==========================================
+        // Federated HUD Polling & Sparkline Engine
+        // ==========================================
+        function initFlHudMonitor() {
+            flHudCard.style.display = "block";
+            fetchFlHudData();
+
+            if (flHudInterval) clearInterval(flHudInterval);
+            flHudInterval = setInterval(fetchFlHudData, 2500);
+        }
+
+        async function fetchFlHudData() {
+            try {
+                const res = await fetch("/api/federated/hud_stats");
+                const data = await res.json();
+
+                document.getElementById("flActiveNodes").innerText = data.active_edge_nodes;
+                document.getElementById("flGlobalLoss").innerText = data.global_loss.toFixed(3);
+                document.getElementById("flCompliance").innerText = `${data.normal_pct}%`;
+                document.getElementById("flRounds").innerText = `R-${data.current_round}`;
+
+                // Render SVG Sparkline
+                renderLossSparkline(data.loss_history);
+            } catch (e) {
+                console.error("FL HUD fetch error:", e);
+            }
+        }
+
+        function renderLossSparkline(history) {
+            if (!history || history.length < 2) return;
+            const svgW = 300;
+            const svgH = 36;
+            const minL = Math.min(...history) * 0.9;
+            const maxL = Math.max(...history) * 1.1;
+
+            const points = history.map((val, idx) => {
+                const x = Math.round((idx / (history.length - 1)) * svgW);
+                const norm = (val - minL) / (maxL - minL || 1);
+                const y = Math.round(svgH - norm * (svgH - 8) - 4);
+                return `${x},${y}`;
+            }).join(" ");
+
+            document.getElementById("sparklinePolyline").setAttribute("points", points);
+        }
+
+        async function fetchLedgerSubmissions() {
+            try {
+                const res = await fetch("/api/session_ledger_status");
+                const data = await res.json();
+
+                if (!data.active) return;
+
+                document.getElementById("candidateCount").innerText = data.total_candidates;
+
+                const badge = document.getElementById("integrityBadge");
+                if (data.integrity_status === "INTACT") {
+                    badge.className = "badge-intact";
+                    badge.innerText = "CHAIN INTACT - VERIFIED";
+                } else {
+                    badge.className = "badge-breach";
+                    badge.innerText = "SECURITY BREACH DETECTED";
+                }
+
+                const tbody = document.getElementById("submissionsTableBody");
+                if (!data.blocks || data.blocks.length === 0) {
+                    tbody.innerHTML = `
+                    <tr>
+                        <td colspan="3" style="text-align: center; color: #64748b; padding: 25px;">
+                            Waiting for candidate submissions... Answer scripts committed to this session's ledger will appear here.
+                        </td>
+                    </tr>
+                `;
+                    return;
+                }
+
+                let rowsHtml = "";
+                data.blocks.forEach(b => {
+                    const autoBadge = b.is_auto ? '<span class="tag-auto">AUTO-SUBMIT</span>' : '';
+                    rowsHtml += `
+                    <tr>
+                        <td><strong>#${b.block_index}</strong></td>
+                        <td><strong style="color: #38bdf8;">${b.student_id}</strong> ${autoBadge}</td>
+                        <td style="color: #cbd5e1;">${b.timestamp_ist}</td>
+                    </tr>
+                `;
+                });
+                tbody.innerHTML = rowsHtml;
+            } catch (err) {
+                console.error("Monitor fetch error:", err);
+            }
+        }
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,1237 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SecuLearn-Net | AI Proctored Student Exam Portal</title>
+
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.10.0/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/blazeface@0.0.7/dist/blazeface.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.3/dist/coco-ssd.min.js"></script>
+
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        html,
+        body {
+            width: 100vw;
+            height: 100vh;
+            max-width: 100vw;
+            max-height: 100vh;
+            overflow: hidden;
+            background: #0b0f19;
+            color: #f8fafc;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            user-select: none;
+        }
+
+        .auth-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(11, 15, 25, 0.98);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 999;
+        }
+
+        .auth-card {
+            background: #1e293b;
+            padding: 35px 30px;
+            border-radius: 12px;
+            max-width: 440px;
+            width: 90%;
+            border: 1px solid #334155;
+            text-align: center;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.6);
+        }
+
+        .auth-card input[type="text"] {
+            width: 100%;
+            padding: 12px 14px;
+            margin-bottom: 15px;
+            border-radius: 6px;
+            border: 1px solid #475569;
+            background: #0f172a;
+            color: #fff;
+            font-size: 15px;
+            outline: none;
+        }
+
+        .auth-card input[type="text"]:focus {
+            border-color: #38bdf8;
+        }
+
+        .btn-primary {
+            background: #0284c7;
+            color: white;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: 600;
+            width: 100%;
+            transition: background 0.2s;
+        }
+
+        .btn-primary:hover {
+            background: #0369a1;
+        }
+
+        .alert-toast {
+            position: fixed;
+            top: 15px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #dc2626;
+            color: white;
+            padding: 12px 25px;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 14px;
+            display: none;
+            z-index: 1000;
+            box-shadow: 0 10px 25px rgba(220, 38, 38, 0.5);
+            border: 1px solid #ef4444;
+        }
+
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.85);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1002;
+        }
+
+        .modal-box {
+            background: #1e293b;
+            padding: 25px;
+            border-radius: 10px;
+            max-width: 440px;
+            width: 88%;
+            text-align: center;
+            border: 1px solid #475569;
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.7);
+        }
+
+        .modal-box h3 {
+            color: #38bdf8;
+            margin-bottom: 10px;
+            font-size: 18px;
+        }
+
+        .modal-box p {
+            color: #cbd5e1;
+            font-size: 14px;
+            line-height: 1.5;
+            margin-bottom: 20px;
+            white-space: pre-line;
+        }
+
+        .modal-btn-row {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+        }
+
+        .btn-modal {
+            padding: 10px 20px;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .btn-modal-confirm {
+            background: #16a34a;
+            color: #fff;
+        }
+
+        .btn-modal-cancel {
+            background: #475569;
+            color: #fff;
+        }
+
+        .kiosk-lock-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.98);
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 1001;
+            padding: 25px;
+            text-align: center;
+        }
+
+        .kiosk-lock-overlay h2 {
+            color: #ef4444;
+            font-size: 24px;
+            margin-bottom: 12px;
+        }
+
+        .kiosk-lock-overlay p {
+            color: #94a3b8;
+            font-size: 15px;
+            max-width: 480px;
+            line-height: 1.6;
+            margin-bottom: 25px;
+        }
+
+        .layout-container {
+            display: flex;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .pane {
+            flex: 0 0 50%;
+            width: 50%;
+            max-width: 50%;
+            min-width: 0;
+            height: 100vh;
+            padding: 18px 22px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .pane-left {
+            background: #111827;
+            border-right: 2px solid #1e293b;
+        }
+
+        .pane-right {
+            background: #0b0f19;
+        }
+
+        .section-title {
+            color: #38bdf8;
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-shrink: 0;
+        }
+
+        .timer-banner {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            padding: 10px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+            flex-shrink: 0;
+        }
+
+        .timer-label {
+            font-size: 13px;
+            color: #94a3b8;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .timer-clock {
+            font-family: 'Consolas', monospace;
+            font-size: 20px;
+            font-weight: 700;
+            color: #4ade80;
+            letter-spacing: 2px;
+            background: #0b0f19;
+            padding: 4px 14px;
+            border-radius: 6px;
+            border: 1px solid #334155;
+        }
+
+        .timer-clock.warning {
+            color: #ef4444;
+            border-color: #ef4444;
+            animation: pulse 1s infinite;
+        }
+
+        .paper-frame-container {
+            flex: 1;
+            min-height: 0;
+            background: #1e293b;
+            border-radius: 8px;
+            border: 1px solid #334155;
+            overflow: hidden;
+            display: flex;
+            position: relative;
+        }
+
+        iframe#pdfFrame {
+            width: 100%;
+            height: 100%;
+            border: none;
+            background: #334155;
+        }
+
+        .placeholder-message {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #94a3b8;
+            font-size: 14px;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .proctor-hud {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #1e293b;
+            padding: 10px 16px;
+            border-radius: 8px;
+            border: 1px solid #334155;
+            margin-bottom: 12px;
+            flex-shrink: 0;
+        }
+
+        .hud-status-group {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .hud-badges {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .badge-live {
+            background: #16a34a;
+            color: white;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 700;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .badge-net {
+            background: #0284c7;
+            color: white;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 700;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .badge-net.offline {
+            background: #dc2626 !important;
+            animation: pulse 1s infinite;
+        }
+
+        .badge-strike {
+            background: #ea580c;
+            color: white;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 700;
+        }
+
+        .badge-strike.danger {
+            background: #dc2626;
+            animation: pulse 1s infinite;
+        }
+
+        .indicator {
+            width: 7px;
+            height: 7px;
+            background: white;
+            border-radius: 50%;
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.3;
+            }
+
+            100% {
+                opacity: 1;
+            }
+        }
+
+        .video-box {
+            position: relative;
+            width: 130px;
+            height: 90px;
+            border-radius: 6px;
+            overflow: hidden;
+            border: 2px solid #0284c7;
+            flex-shrink: 0;
+            background: #000;
+        }
+
+        video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .mic-meter-bar {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            height: 4px;
+            width: 0%;
+            background: #22c55e;
+            transition: width 0.1s;
+        }
+
+        .answer-editor {
+            flex: 1;
+            min-height: 0;
+            width: 100%;
+            background: #1e293b;
+            padding: 16px;
+            border-radius: 8px;
+            border: 1px solid #334155;
+            color: #ffffff;
+            font-size: 14.5px;
+            font-family: inherit;
+            line-height: 1.6;
+            resize: none;
+            outline: none;
+            overflow-y: auto;
+            overflow-x: hidden;
+            word-wrap: break-word;
+            margin-bottom: 8px;
+            user-select: text;
+        }
+
+        .answer-editor:focus {
+            border-color: #38bdf8;
+        }
+
+        .editor-telemetry-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 12px;
+            color: #94a3b8;
+            padding: 4px 6px;
+            margin-bottom: 10px;
+            flex-shrink: 0;
+        }
+
+        .telemetry-metrics {
+            display: flex;
+            gap: 15px;
+            font-weight: 500;
+        }
+
+        .telemetry-autosave {
+            color: #4ade80;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn-submit {
+            background: #16a34a;
+            color: white;
+            padding: 14px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 700;
+            width: 100%;
+            flex-shrink: 0;
+        }
+
+        .btn-submit:hover {
+            background: #15803d;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="alert-toast" id="alertToast">Warning!!!</div>
+
+    <div class="modal-overlay" id="customModal">
+        <div class="modal-box">
+            <h3 id="modalTitle">Notice</h3>
+            <p id="modalMsg">Notification text goes here.</p>
+            <div class="modal-btn-row" id="modalActions">
+                <button class="btn-modal btn-modal-confirm" id="modalOkBtn" onclick="closeModal()">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="kiosk-lock-overlay" id="kioskLockOverlay">
+        <h2>FULLSCREEN BREACH DETECTED</h2>
+        <p>You have exited fullscreen assessment mode. SecuLearn-Net requires strict fullscreen isolation throughout the
+            examination.</p>
+        <button class="btn-primary" style="max-width: 280px;" onclick="resumeFullscreenKiosk()">Resume Fullscreen
+            Exam</button>
+    </div>
+
+    <div class="auth-overlay" id="authModal">
+        <div class="auth-card">
+            <h2 style="color: #38bdf8; margin-bottom: 8px;">SECULEARN-NET EXAM LOGIN PORTAL</h2>
+            <p id="calibStatusText" style="color: #94a3b8; font-size: 12.5px; margin-bottom: 14px;">
+                TLS 1.3 Secure Session • 10s Ambient Audio Calibration Ready
+            </p>
+            <input type="text" id="studentId" placeholder="Enter Registration ID (e.g. 22MIS0332)" required>
+            <input type="text" id="accessCode" placeholder="Enter 6-Digit Access Code (e.g. LX689B)" maxlength="6"
+                style="text-transform: uppercase; font-family: monospace; letter-spacing: 3px;" required>
+            <button class="btn-primary" id="startExamBtn" onclick="requestPermissionsAndStart()">Calibrate Audio & Start
+                Exam</button>
+            <p id="errorMsg" style="color: #ef4444; font-size: 13.5px; margin-top: 14px; display: none;"></p>
+        </div>
+    </div>
+
+    <div class="layout-container">
+        <div class="pane pane-left">
+            <div class="timer-banner">
+                <span class="timer-label">Time Remaining :</span>
+                <span class="timer-clock" id="examClockDisplay">--:--:--</span>
+            </div>
+            <div class="section-title"><span>Question Paper</span></div>
+            <div class="paper-frame-container">
+                <div class="placeholder-message" id="placeholderMsg">Authenticating credentials before releasing
+                    encrypted document...</div>
+                <iframe id="pdfFrame" style="display: none;"></iframe>
+            </div>
+        </div>
+
+        <div class="pane pane-right">
+            <div class="proctor-hud">
+                <div class="hud-status-group">
+                    <div class="hud-badges">
+                        <span class="badge-live"><span class="indicator"></span> ONLINE PROCTOR ACTIVE</span>
+                        <span class="badge-net" id="networkBadge">TLS 1.3 • OK</span>
+                        <span class="badge-strike" id="strikeBadge">Warnings: 0 / 3</span>
+                    </div>
+                    <p style="margin: 4px 0 0 0; font-size: 11.5px; color: #94a3b8;" id="proctorSubtext">
+                        Initializing Face AI, Gadget Detection & Adaptive Audio Monitor...
+                    </p>
+                </div>
+                <div class="video-box">
+                    <video id="webcamPreview" autoplay playsinline muted></video>
+                    <div class="mic-meter-bar" id="micMeter"></div>
+                </div>
+            </div>
+
+            <div class="section-title"><span>Answers</span></div>
+            <textarea class="answer-editor" id="answersText" placeholder="Type your answers and solutions here..."
+                oninput="handleEditorInput()"></textarea>
+
+            <div class="editor-telemetry-bar">
+                <div class="telemetry-metrics">
+                    <span>Words: <strong id="wordCount">0</strong></span>
+                    <span>Characters: <strong id="charCount">0</strong></span>
+                    <span>Lines: <strong id="lineCount">1</strong></span>
+                </div>
+                <div class="telemetry-autosave" id="autosaveStatus"><span>●</span> Draft Synchronized</div>
+            </div>
+
+            <button class="btn-submit" id="submitBtn" onclick="handleManualSubmitClick()">Submit</button>
+        </div>
+    </div>
+
+    <script>
+        let activeStudentId = "";
+        let activeAccessCode = "";
+        let isExamActive = false;
+        let strikeCount = 0;
+        const MAX_STRIKES = 3;
+        let lastViolationTime = 0;
+
+        let totalExamSeconds = 900;
+        let secondsLeft = 900;
+        let examCountdownInterval = null;
+
+        let isImmuneGracePeriod = true;
+        let isReloading = false;
+
+        let mediaStream = null;
+        let faceModel = null;
+        let cocoModel = null;
+        let visionDetectionInterval = null;
+        let audioContext = null;
+        let analyser = null;
+        let audioMonitorInterval = null;
+        let federatedHeartbeatInterval = null;
+
+        let autosaveTimeout = null;
+        let isIntentionalFullscreenExit = false;
+
+        // Section 3.3: Adaptive dBFS Audio Calibration (L_amb + Delta)
+        let ambientNoiseFloorDbfs = -55.0;
+        const SPEECH_MARGIN_DELTA_DB = 12.0; // Delta dB above calibrated ambient floor
+        let sustainedSpeechMs = 0;
+        let sustainedNoFaceMs = 0;
+        let sustainedMultiFaceMs = 0;
+
+        // Section 3.5: 10-feature window accumulators + 11-parameter logistic model
+        const FORBIDDEN_OBJECTS = ["cell phone", "book", "laptop", "remote"];
+        let windowStats = {
+            maxFaceCount: 1,
+            secNoFace: 0,
+            secMultiFace: 0,
+            maxPhoneConf: 0,
+            maxBookConf: 0,
+            maxLaptopConf: 0,
+            secSpeechAboveThresh: 0,
+            blurEvents: 0,
+            fsExits: 0,
+            keyIntercepts: 0
+        };
+
+        window.addEventListener("beforeunload", () => {
+            isReloading = true;
+            saveSessionState();
+        });
+
+        function getStateStorageKey() {
+            return `seculearn_state_${activeAccessCode}_${activeStudentId}`;
+        }
+
+        function saveSessionState() {
+            if (!activeAccessCode || !activeStudentId) return;
+            const text = document.getElementById("answersText").value;
+            const state = {
+                draft: text,
+                secondsLeft: secondsLeft,
+                strikeCount: Math.min(strikeCount, MAX_STRIKES),
+                savedAt: Date.now()
+            };
+            sessionStorage.setItem(getStateStorageKey(), JSON.stringify(state));
+        }
+
+        function showNotificationModal(title, msg, onOk = null) {
+            document.getElementById("modalTitle").innerText = title;
+            document.getElementById("modalMsg").innerText = msg;
+            const actions = document.getElementById("modalActions");
+            actions.innerHTML = `<button class="btn-modal btn-modal-confirm" id="modalOkBtn">OK</button>`;
+            document.getElementById("modalOkBtn").onclick = () => {
+                closeModal();
+                if (onOk) onOk();
+            };
+            document.getElementById("customModal").style.display = "flex";
+        }
+
+        function showConfirmModal(title, msg, onConfirm) {
+            document.getElementById("modalTitle").innerText = title;
+            document.getElementById("modalMsg").innerText = msg;
+            const actions = document.getElementById("modalActions");
+            actions.innerHTML = `
+                <button class="btn-modal btn-modal-cancel" onclick="closeModal()">Cancel</button>
+                <button class="btn-modal btn-modal-confirm" id="confirmActionBtn">Confirm Submission</button>
+            `;
+            document.getElementById("confirmActionBtn").onclick = () => {
+                closeModal();
+                onConfirm();
+            };
+            document.getElementById("customModal").style.display = "flex";
+        }
+
+        function closeModal() {
+            document.getElementById("customModal").style.display = "none";
+            const answerBox = document.getElementById("answersText");
+            if (isExamActive && answerBox) answerBox.focus();
+        }
+
+        function formatTime(sec) {
+            const h = Math.floor(sec / 3600);
+            const m = Math.floor((sec % 3600) / 60);
+            const s = sec % 60;
+            return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+        }
+
+        function startExamCountdown(initialDurationSec) {
+            totalExamSeconds = initialDurationSec;
+            const clockEl = document.getElementById("examClockDisplay");
+            clockEl.innerText = formatTime(secondsLeft);
+            if (examCountdownInterval) clearInterval(examCountdownInterval);
+
+            examCountdownInterval = setInterval(() => {
+                if (!isExamActive) return;
+                secondsLeft--;
+                clockEl.innerText = formatTime(Math.max(0, secondsLeft));
+                if (secondsLeft % 3 === 0) saveSessionState();
+                if (secondsLeft <= 300) clockEl.className = "timer-clock warning";
+                if (secondsLeft <= 0) {
+                    clearInterval(examCountdownInterval);
+                    enforceAutoSubmit("EXAMINATION TIME LIMIT EXPIRED (00:00:00)");
+                }
+            }, 1000);
+        }
+
+        function handleEditorInput() {
+            const text = document.getElementById("answersText").value;
+            const words = text.trim() === "" ? 0 : text.trim().split(/\s+/).length;
+            const chars = text.length;
+            const lines = text === "" ? 1 : text.split("\n").length;
+
+            document.getElementById("wordCount").innerText = words;
+            document.getElementById("charCount").innerText = chars;
+            document.getElementById("lineCount").innerText = lines;
+
+            const statusEl = document.getElementById("autosaveStatus");
+            statusEl.style.color = "#f59e0b";
+            statusEl.innerHTML = "<span>●</span> Saving draft...";
+
+            if (autosaveTimeout) clearTimeout(autosaveTimeout);
+            autosaveTimeout = setTimeout(() => {
+                saveSessionState();
+                const timeStr = new Date().toLocaleTimeString('en-IN', { hour12: false, timeZone: 'Asia/Kolkata' });
+                statusEl.style.color = "#4ade80";
+                statusEl.innerHTML = `<span>●</span> Autosaved at ${timeStr} IST`;
+            }, 1200);
+        }
+
+        function restoreSessionState(defaultDurationSec) {
+            const savedRaw = sessionStorage.getItem(getStateStorageKey());
+            if (savedRaw) {
+                try {
+                    const state = JSON.parse(savedRaw);
+                    if (state.draft && state.draft.trim() !== "") {
+                        document.getElementById("answersText").value = state.draft;
+                        handleEditorInput();
+                    }
+                    if (typeof state.strikeCount === 'number') {
+                        strikeCount = Math.min(state.strikeCount, MAX_STRIKES);
+                        updateStrikeUI();
+                    }
+                    secondsLeft = (typeof state.secondsLeft === 'number' && state.secondsLeft > 0) ? state.secondsLeft : defaultDurationSec;
+                    if (strikeCount >= MAX_STRIKES) {
+                        enforceAutoSubmit("Maximum proctoring violation limit reached (3 of 3 strikes).");
+                    }
+                    return;
+                } catch (e) { console.error("State parse error:", e); }
+            }
+            secondsLeft = defaultDurationSec;
+            strikeCount = 0;
+            updateStrikeUI();
+        }
+
+        function enterFullscreenKiosk() {
+            const elem = document.documentElement;
+            if (elem.requestFullscreen) {
+                elem.requestFullscreen().catch(err => console.warn("Fullscreen request declined:", err));
+            }
+        }
+
+        function resumeFullscreenKiosk() {
+            enterFullscreenKiosk();
+            document.getElementById("kioskLockOverlay").style.display = "none";
+            isImmuneGracePeriod = true;
+            setTimeout(() => { isImmuneGracePeriod = false; }, 3000);
+        }
+
+        document.addEventListener("fullscreenchange", () => {
+            if (!document.fullscreenElement && isExamActive && !isIntentionalFullscreenExit) {
+                windowStats.fsExits++;
+                document.getElementById("kioskLockOverlay").style.display = "flex";
+                if (!isImmuneGracePeriod && !isReloading) {
+                    triggerViolation("Fullscreen exited! Fullscreen isolation is strictly required.");
+                }
+            }
+        });
+
+        function setBadgeOffline() {
+            const netBadge = document.getElementById("networkBadge");
+            netBadge.className = "badge-net offline";
+            netBadge.innerText = "OFFLINE • DISCONNECTED";
+        }
+
+        function build10FeatureVector() {
+            const z = [
+                windowStats.maxFaceCount,
+                Number(windowStats.secNoFace.toFixed(2)),
+                Number(windowStats.secMultiFace.toFixed(2)),
+                Number(windowStats.maxPhoneConf.toFixed(3)),
+                Number(windowStats.maxBookConf.toFixed(3)),
+                Number(windowStats.maxLaptopConf.toFixed(3)),
+                Number(windowStats.secSpeechAboveThresh.toFixed(2)),
+                windowStats.blurEvents,
+                windowStats.fsExits,
+                windowStats.keyIntercepts
+            ];
+            windowStats = {
+                maxFaceCount: 1, secNoFace: 0, secMultiFace: 0,
+                maxPhoneConf: 0, maxBookConf: 0, maxLaptopConf: 0,
+                secSpeechAboveThresh: 0, blurEvents: 0, fsExits: 0, keyIntercepts: 0
+            };
+            return z;
+        }
+
+        function sendTelemetryUpdate() {
+            const netBadge = document.getElementById("networkBadge");
+            if (!navigator.onLine) { setBadgeOffline(); return; }
+
+            const features10 = build10FeatureVector();
+            const startTime = performance.now();
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 1800);
+
+            fetch("/api/edge_proctor_heartbeat", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    student_id: activeStudentId,
+                    has_anomaly: (strikeCount > 0),
+                    features: features10
+                }),
+                signal: controller.signal
+            })
+                .then(res => {
+                    clearTimeout(timeoutId);
+                    const latency = Math.round(performance.now() - startTime);
+                    if (res.ok) {
+                        netBadge.className = "badge-net";
+                        netBadge.innerText = `TLS 1.3 • ${latency}ms`;
+                    } else {
+                        setBadgeOffline();
+                    }
+                })
+                .catch(() => {
+                    clearTimeout(timeoutId);
+                    setBadgeOffline();
+                });
+        }
+
+        window.addEventListener("offline", setBadgeOffline);
+        window.addEventListener("online", sendTelemetryUpdate);
+
+        function triggerViolation(reason) {
+            if (!isExamActive || isImmuneGracePeriod || isReloading) return;
+            const now = Date.now();
+            if (now - lastViolationTime < 3000) return; // 3-second debouncing window (Section 3.4)
+            lastViolationTime = now;
+
+            strikeCount++;
+            saveSessionState();
+            updateStrikeUI();
+
+            if (strikeCount >= MAX_STRIKES) {
+                enforceAutoSubmit(`Exceeded maximum proctoring violation limit (${MAX_STRIKES} strikes reached). Final breach: ${reason}`);
+                return;
+            }
+
+            const toast = document.getElementById("alertToast");
+            toast.innerText = `[VIOLATION #${strikeCount} of ${MAX_STRIKES}] ${reason}`;
+            toast.style.display = "block";
+            setTimeout(() => { toast.style.display = "none"; }, 3500);
+        }
+
+        function updateStrikeUI() {
+            const badge = document.getElementById("strikeBadge");
+            badge.innerText = `Warnings: ${Math.min(strikeCount, MAX_STRIKES)} / ${MAX_STRIKES}`;
+            badge.className = strikeCount >= 2 ? "badge-strike danger" : "badge-strike";
+        }
+
+        async function enforceAutoSubmit(disqualificationReason) {
+            if (!isExamActive) return;
+            isExamActive = false;
+            clearInterval(examCountdownInterval);
+            clearInterval(visionDetectionInterval);
+            clearInterval(audioMonitorInterval);
+            clearInterval(federatedHeartbeatInterval);
+
+            document.getElementById("answersText").disabled = true;
+            document.getElementById("submitBtn").disabled = true;
+
+            showNotificationModal(
+                "Examination Terminated",
+                `${disqualificationReason}\n\nYour answers are being dual-signed and committed to the ledger.`,
+                async () => { await submitExamPayload(true, disqualificationReason); }
+            );
+        }
+
+        async function initVisionDetectors() {
+            const subtext = document.getElementById("proctorSubtext");
+            const videoEl = document.getElementById("webcamPreview");
+            try {
+                subtext.innerText = "Loading TensorFlow.js Edge Vision Models (BlazeFace & COCO-SSD)...";
+                await tf.setBackend('webgl').catch(() => tf.setBackend('cpu'));
+                faceModel = await blazeface.load();
+                cocoModel = await cocoSsd.load();
+
+                subtext.innerText = "AI Vision Active: BlazeFace & COCO-SSD Running in RAM";
+                subtext.style.color = "#4ade80";
+
+                const CYCLE_MS = 1000;
+                visionDetectionInterval = setInterval(async () => {
+                    if (!isExamActive || videoEl.readyState < 2) return;
+                    try {
+                        const preds = await faceModel.estimateFaces(videoEl, false);
+                        const faceCount = preds.length;
+                        windowStats.maxFaceCount = Math.max(windowStats.maxFaceCount, faceCount);
+
+                        if (faceCount >= 2) {
+                            sustainedMultiFaceMs += CYCLE_MS;
+                            sustainedNoFaceMs = 0;
+                            windowStats.secMultiFace += CYCLE_MS / 1000;
+                            if (sustainedMultiFaceMs > 3000) {
+                                subtext.innerText = `ALERT: ${faceCount} Faces Detected!`;
+                                subtext.style.color = "#ef4444";
+                                triggerViolation(`Multiple faces detected in camera frame (${faceCount} faces)!`);
+                                return;
+                            }
+                        } else if (faceCount === 0) {
+                            sustainedNoFaceMs += CYCLE_MS;
+                            sustainedMultiFaceMs = 0;
+                            windowStats.secNoFace += CYCLE_MS / 1000;
+                            if (sustainedNoFaceMs > 3000) {
+                                subtext.innerText = `ALERT: Examinee Absent from Frame!`;
+                                subtext.style.color = "#ef4444";
+                                triggerViolation(`No face detected in camera frame for > 3 seconds!`);
+                                return;
+                            }
+                        } else {
+                            sustainedNoFaceMs = 0;
+                            sustainedMultiFaceMs = 0;
+                        }
+
+                        const predictions = await cocoModel.detect(videoEl);
+                        for (let p of predictions) {
+                            const label = p.class.toLowerCase();
+                            if (label === "cell phone") windowStats.maxPhoneConf = Math.max(windowStats.maxPhoneConf, p.score);
+                            if (label === "book") windowStats.maxBookConf = Math.max(windowStats.maxBookConf, p.score);
+                            if (label === "laptop") windowStats.maxLaptopConf = Math.max(windowStats.maxLaptopConf, p.score);
+
+                            if (p.score > 0.65 && FORBIDDEN_OBJECTS.includes(label)) {
+                                subtext.innerText = `ALERT: ${p.class.toUpperCase()} DETECTED (${Math.round(p.score * 100)}%)!`;
+                                subtext.style.color = "#ef4444";
+                                triggerViolation(`Unauthorized object detected: '${p.class}' (${Math.round(p.score * 100)}%)!`);
+                                return;
+                            }
+                        }
+
+                        if (faceCount === 1) {
+                            subtext.innerText = `AI Proctor Compliant: 1 Face | Audio Floor: ${ambientNoiseFloorDbfs.toFixed(1)} dBFS`;
+                            subtext.style.color = "#4ade80";
+                        }
+                    } catch (e) { console.error("Vision cycle error:", e); }
+                }, CYCLE_MS);
+            } catch (err) {
+                console.error("Vision init error:", err);
+                subtext.innerText = "Vision AI Running (Partial)";
+                subtext.style.color = "#f59e0b";
+            }
+        }
+
+        // Equation (4): 10-second silent ambient calibration L_amb + Delta dBFS over 100 ms blocks
+        function computeBlockDbfs(analyserNode, floatBuffer) {
+            analyserNode.getFloatTimeDomainData(floatBuffer);
+            let sumSq = 0;
+            for (let i = 0; i < floatBuffer.length; i++) {
+                sumSq += floatBuffer[i] * floatBuffer[i];
+            }
+            const rms = Math.sqrt(sumSq / floatBuffer.length);
+            return 20.0 * Math.log10(Math.max(rms, 1e-7));
+        }
+
+        async function run10SecondAmbientCalibration(stream) {
+            const calibText = document.getElementById("calibStatusText");
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const source = audioContext.createMediaStreamSource(stream);
+            analyser = audioContext.createAnalyser();
+            analyser.fftSize = 2048;
+            source.connect(analyser);
+
+            const floatBuffer = new Float32Array(analyser.fftSize);
+            const samples = [];
+
+            return new Promise((resolve) => {
+                let elapsed = 0;
+                const interval = setInterval(() => {
+                    const dbfs = computeBlockDbfs(analyser, floatBuffer);
+                    samples.push(dbfs);
+                    elapsed += 100;
+                    const remSec = Math.max(0, Math.ceil((10000 - elapsed) / 1000));
+                    calibText.innerText = `Calibrating room noise floor (${remSec}s remaining)... Please stay silent.`;
+                }, 100);
+
+                setTimeout(() => {
+                    clearInterval(interval);
+                    const avg = samples.reduce((a, b) => a + b, 0) / Math.max(1, samples.length);
+                    ambientNoiseFloorDbfs = avg;
+                    calibText.innerText = `Calibrated Ambient Floor: ${ambientNoiseFloorDbfs.toFixed(1)} dBFS (Trigger > ${(ambientNoiseFloorDbfs + SPEECH_MARGIN_DELTA_DB).toFixed(1)} dBFS)`;
+                    resolve(avg);
+                }, 10000);
+            });
+        }
+
+        function startAdaptiveAudioMonitor() {
+            const floatBuffer = new Float32Array(analyser.fftSize);
+            const micMeter = document.getElementById("micMeter");
+            const thresholdDbfs = ambientNoiseFloorDbfs + SPEECH_MARGIN_DELTA_DB;
+
+            audioMonitorInterval = setInterval(() => {
+                if (!isExamActive) return;
+                const levelDbfs = computeBlockDbfs(analyser, floatBuffer);
+                const barWidth = Math.min(100, Math.max(0, ((levelDbfs + 70) / 70) * 100));
+                micMeter.style.width = `${barWidth}%`;
+
+                if (levelDbfs > thresholdDbfs) {
+                    micMeter.style.background = "#ef4444";
+                    sustainedSpeechMs += 100;
+                    windowStats.secSpeechAboveThresh += 0.1;
+                    if (sustainedSpeechMs > 2000) {
+                        triggerViolation(`Vocal speech detected (${levelDbfs.toFixed(1)} dBFS > L_amb + ${SPEECH_MARGIN_DELTA_DB} dB)!`);
+                        sustainedSpeechMs = 0;
+                    }
+                } else {
+                    micMeter.style.background = "#22c55e";
+                    sustainedSpeechMs = Math.max(0, sustainedSpeechMs - 50);
+                }
+            }, 100);
+        }
+
+        function setupIntegrityListeners() {
+            document.addEventListener("visibilitychange", () => {
+                if (document.hidden && isExamActive && !isImmuneGracePeriod && !isReloading) {
+                    windowStats.blurEvents++;
+                    triggerViolation("Tab switch detected! Examination window lost focus.");
+                }
+            });
+
+            window.addEventListener("blur", () => {
+                const modalEl = document.getElementById("customModal");
+                const kioskOverlay = document.getElementById("kioskLockOverlay");
+                if ((modalEl && modalEl.style.display === "flex") ||
+                    (kioskOverlay && kioskOverlay.style.display === "flex") ||
+                    isImmuneGracePeriod || isReloading) return;
+                if (isExamActive) {
+                    windowStats.blurEvents++;
+                    triggerViolation("Window unfocused or application switch attempted!");
+                }
+            });
+
+            window.addEventListener("contextmenu", (e) => {
+                e.preventDefault();
+                if (isExamActive) {
+                    windowStats.keyIntercepts++;
+                    triggerViolation("Right-click context menu is strictly disabled!");
+                }
+                return false;
+            });
+
+            const answerBox = document.getElementById("answersText");
+            ['copy', 'cut', 'paste'].forEach((evt) => {
+                answerBox.addEventListener(evt, (e) => {
+                    e.preventDefault();
+                    if (isExamActive) {
+                        windowStats.keyIntercepts++;
+                        triggerViolation(`Action prohibited: '${evt.toUpperCase()}' is disabled during examination!`);
+                    }
+                    return false;
+                });
+            });
+
+            window.addEventListener("keydown", (e) => {
+                if (!isExamActive) return;
+                if (e.key === "F5" || (e.ctrlKey && e.key === "r")) {
+                    isReloading = true;
+                    saveSessionState();
+                    return;
+                }
+                if (e.key === "F12" || (e.ctrlKey && e.shiftKey && (e.key === "I" || e.key === "J"))) {
+                    e.preventDefault();
+                    windowStats.keyIntercepts++;
+                    triggerViolation("Developer Tools shortcut attempt blocked!");
+                }
+                if ((e.shiftKey && e.key === "F10") || e.key === "ContextMenu") {
+                    e.preventDefault();
+                    windowStats.keyIntercepts++;
+                    triggerViolation("Keyboard context menu shortcut blocked!");
+                }
+                if (e.ctrlKey && ["c", "C", "v", "V", "x", "X"].includes(e.key)) {
+                    e.preventDefault();
+                    windowStats.keyIntercepts++;
+                    triggerViolation(`Prohibited keyboard shortcut: Ctrl+${e.key.toUpperCase()}!`);
+                }
+            });
+        }
+
+        async function requestPermissionsAndStart() {
+            const sId = document.getElementById("studentId").value.trim();
+            const code = document.getElementById("accessCode").value.trim().toUpperCase();
+            const errorMsg = document.getElementById("errorMsg");
+            const startBtn = document.getElementById("startExamBtn");
+
+            if (!sId || !code) {
+                errorMsg.innerText = "Please enter both your Registration ID and Access Code.";
+                errorMsg.style.display = "block";
+                return;
+            }
+
+            // Trigger fullscreen IMMEDIATELY while the click gesture token is still active
+            enterFullscreenKiosk();
+
+            try {
+                startBtn.disabled = true;
+                const verifyRes = await fetch("/api/verify_code", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ access_code: code, student_id: sId })
+                });
+                const verifyData = await verifyRes.json();
+
+                if (!verifyRes.ok || !verifyData.valid) {
+                    if (document.fullscreenElement) document.exitFullscreen().catch(() => { });
+                    errorMsg.innerText = verifyData.message || "Invalid Access Code!";
+                    errorMsg.style.display = "block";
+                    startBtn.disabled = false;
+                    return;
+                }
+
+                mediaStream = await navigator.mediaDevices.getUserMedia({
+                    video: { width: 320, height: 240, frameRate: 15 },
+                    audio: true
+                });
+                document.getElementById("webcamPreview").srcObject = mediaStream;
+
+                // Run 10-second ambient noise calibration (Section 3.3)
+                await run10SecondAmbientCalibration(mediaStream);
+
+                const paperRes = await fetch("/api/fetch_decrypted_paper", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ access_code: code, student_id: sId })
+                });
+
+                if (!paperRes.ok) {
+                    if (document.fullscreenElement) document.exitFullscreen().catch(() => { });
+                    errorMsg.innerText = "Failed to decrypt paper.";
+                    errorMsg.style.display = "block";
+                    startBtn.disabled = false;
+                    return;
+                }
+
+                const blob = await paperRes.blob();
+                const blobUrl = URL.createObjectURL(blob);
+
+                const pdfFrame = document.getElementById("pdfFrame");
+                pdfFrame.src = blobUrl;
+                pdfFrame.style.display = "block";
+                document.getElementById("placeholderMsg").style.display = "none";
+
+                activeStudentId = sId;
+                activeAccessCode = code;
+                isExamActive = true;
+                document.getElementById("authModal").style.display = "none";
+
+                // Ensure fullscreen is active (in case permission prompt exited it)
+                if (!document.fullscreenElement) {
+                    enterFullscreenKiosk();
+                }
+
+                isImmuneGracePeriod = true;
+                setTimeout(() => { isImmuneGracePeriod = false; }, 6000);
+
+                restoreSessionState(verifyData.exam_duration_seconds || 900);
+                startExamCountdown(verifyData.exam_duration_seconds || 900);
+                initVisionDetectors();
+                startAdaptiveAudioMonitor();
+                setupIntegrityListeners();
+
+                sendTelemetryUpdate();
+                federatedHeartbeatInterval = setInterval(() => {
+                    if (isExamActive) sendTelemetryUpdate();
+                }, 3000);
+
+            } catch (err) {
+                if (document.fullscreenElement) document.exitFullscreen().catch(() => { });
+                errorMsg.innerText = "Camera & Microphone access is mandatory: " + err;
+                errorMsg.style.display = "block";
+                startBtn.disabled = false;
+            }
+        }
+
+        function handleManualSubmitClick() {
+            const answers = document.getElementById("answersText").value.trim();
+            if (!answers) {
+                showNotificationModal("Answer Sheet Empty", "Your answer sheet is currently empty. Please type your answers before submitting.");
+                return;
+            }
+            showConfirmModal(
+                "Confirm Final Submission",
+                "Are you sure you want to save your exam?\n\nNote: Once submitted, you cannot log in or re-take this exam.",
+                () => { submitExamPayload(false); }
+            );
+        }
+
+        async function submitExamPayload(isAutoSubmit = false, violationReason = "") {
+            isIntentionalFullscreenExit = true;
+            isExamActive = false;
+            clearInterval(examCountdownInterval);
+            clearInterval(visionDetectionInterval);
+            clearInterval(audioMonitorInterval);
+            clearInterval(federatedHeartbeatInterval);
+
+            const answers = document.getElementById("answersText").value.trim();
+            const payloadText = answers || "[STUDENT_SUBMITTED_EMPTY_RESPONSE]";
+
+            const res = await fetch("/api/submit_exam", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    access_code: activeAccessCode,
+                    student_id: activeStudentId,
+                    answers: payloadText,
+                    auto_submitted: isAutoSubmit,
+                    violation_reason: violationReason
+                })
+            });
+
+            sessionStorage.removeItem(getStateStorageKey());
+
+            const result = await res.json();
+            if (res.ok) {
+                const submitTypeMsg = isAutoSubmit ? "EXAM AUTO-SUBMITTED (DISQUALIFIED / TIMEOUT)" : "EXAM COMMITTED PERMANENTLY";
+                showNotificationModal(
+                    submitTypeMsg,
+                    "Your answers have been dual-signed (ECDSA secp256k1) and registered. Re-entry will not be permitted.",
+                    () => {
+                        if (document.fullscreenElement) document.exitFullscreen().catch(() => { });
+                        window.location.reload();
+                    }
+                );
+            } else {
+                showNotificationModal("Submission Error", "Submission failed: " + result.error);
+            }
+        }
+    </script>
+</body>
+
+</html>
